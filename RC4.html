@@ -4,7 +4,52 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Secure Note</title>
-<link rel="stylesheet" href="RC4.css">
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+        background-color: #f2f2f2;
+    }
+
+    .container {
+        max-width: 600px;
+        margin: 50px auto;
+        padding: 20px;
+        background-color: #fff;
+        border-radius: 8px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+
+    h1 {
+        text-align: center;
+    }
+
+    textarea {
+        width: 100%;
+        height: 150px;
+        margin-bottom: 10px;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+    }
+
+    button {
+        display: block;
+        width: 100%;
+        padding: 10px;
+        margin-top: 10px;
+        border: none;
+        border-radius: 5px;
+        background-color: #007bff;
+        color: #fff;
+        cursor: pointer;
+    }
+
+    button:hover {
+        background-color: #0056b3;
+    }
+</style>
 </head>
 <body>
 <div class="container">
@@ -14,6 +59,117 @@
     <button onclick="viewNote()">View</button>
     <div id="message"></div>
 </div>
-<script src="RC4.js"></script>
+<script>
+    function saveNote() {
+        var note = document.getElementById("noteInput").value;
+        var fileName = prompt("Masukkan nama file (dengan format txt):");
+        if (fileName) {
+            var encryptedNote = RC4Encrypt(note, "yourSecretKey");
+            var blob = new Blob([encryptedNote], {type: "text/plain;charset=utf-8"});
+            saveAs(blob, fileName);
+            document.getElementById("message").innerText = "Catatan disimpan sebagai " + fileName;
+        }
+    }
+
+    function viewNote() {
+        var fileInput = document.createElement("input");
+        fileInput.type = "file";
+        fileInput.accept = ".txt";
+        fileInput.addEventListener("change", function(event) {
+            var file = event.target.files[0];
+            var reader = new FileReader();
+            reader.onload = function() {
+                var encryptedNote = reader.result;
+                var decryptedNote = RC4Decrypt(encryptedNote, "yourSecretKey");
+                alert("Pesan yang didekripsi:\n" + decryptedNote);
+            };
+            reader.readAsText(file);
+        });
+        fileInput.click();
+    }
+
+    function RC4Encrypt(plaintext, key) {
+        var S = [];
+        var K = [];
+        var ciphertext = '';
+        var keyLength = key.length;
+
+        for (var i = 0; i < 256; i++) {
+            S[i] = i;
+            K[i] = key.charCodeAt(i % keyLength);
+        }
+
+        var j = 0;
+        for (var i = 0; i < 256; i++) {
+            j = (j + S[i] + K[i]) % 256;
+            var temp = S[i];
+            S[i] = S[j];
+            S[j] = temp;
+        }
+
+        var i = 0;
+        var j = 0;
+        for (var k = 0; k < plaintext.length; k++) {
+            i = (i + 1) % 256;
+            j = (j + S[i]) % 256;
+            var temp = S[i];
+            S[i] = S[j];
+            S[j] = temp;
+            var keystreamIndex = (S[i] + S[j]) % 256;
+            var keystreamChar = S[keystreamIndex];
+            ciphertext += String.fromCharCode(plaintext.charCodeAt(k) ^ keystreamChar);
+        }
+
+        return ciphertext;
+    }
+
+    function RC4Decrypt(ciphertext, key) {
+        var S = [];
+        var K = [];
+        var plaintext = '';
+        var keyLength = key.length;
+
+        for (var i = 0; i < 256; i++) {
+            S[i] = i;
+            K[i] = key.charCodeAt(i % keyLength);
+        }
+
+        var j = 0;
+        for (var i = 0; i < 256; i++) {
+            j = (j + S[i] + K[i]) % 256;
+            var temp = S[i];
+            S[i] = S[j];
+            S[j] = temp;
+        }
+
+        var i = 0;
+        var j = 0;
+        for (var k = 0; k < ciphertext.length; k++) {
+            i = (i + 1) % 256;
+            j = (j + S[i]) % 256;
+            var temp = S[i];
+            S[i] = S[j];
+            S[j] = temp;
+            var keystreamIndex = (S[i] + S[j]) % 256;
+            var keystreamChar = S[keystreamIndex];
+            plaintext += String.fromCharCode(ciphertext.charCodeAt(k) ^ keystreamChar);
+        }
+
+        return plaintext;
+    }
+
+    var saveAs = function(blob, filename) {
+        var link = document.createElement("a");
+        if (typeof link.download === "string") {
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        } else {
+            window.open(blob);
+        }
+    };
+</script>
 </body>
 </html>
